@@ -3,7 +3,7 @@ import pandas as pd
 import pickle
 import os
 
-st.set_page_config(page_title="Laptop Price Prediction")
+
 
 # Check files
 required_files = [
@@ -33,8 +33,27 @@ except Exception as e:
     st.error(f"Error loading model files:\n\n{e}")
     st.stop()
 
-# Load dataset
+
+
+
+
+
+# Dataset
 df = pd.read_csv("laptops.csv")
+
+# Debug
+df.columns = df.columns.str.strip()
+df.columns = df.columns.str.lower()
+
+st.write("Columns:", df.columns.tolist())
+st.stop()
+
+st.set_page_config(page_title="Laptop Price Prediction")
+
+
+
+
+
 
 st.title("💻 Laptop Price Prediction")
 
