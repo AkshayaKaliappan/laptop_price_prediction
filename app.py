@@ -5,7 +5,7 @@ import pickle
 st.set_page_config(page_title="Laptop Price Prediction", layout="centered")
 
 # Load files
-model = pickle.load(open("laptop_price_model1.pkl", "rb"))
+model = pickle.load(open("model.pkl", "rb"))
 encoder = pickle.load(open("encoder.pkl", "rb"))
 scaler = pickle.load(open("scaler.pkl", "rb"))
 
