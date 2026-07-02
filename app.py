@@ -2,73 +2,159 @@ import streamlit as st
 import pandas as pd
 import pickle
 
-# Load files
-model = pickle.load(open("laptop_price_model1.pkl", "rb"))
-encoder = pickle.load(open("encoder.pkl", "rb"))
-scaler = pickle.load(open("scaler.pkl", "rb"))
+# ------------------ Page Config ------------------
+st.set_page_config(
+    page_title="Laptop Price Predictor",
+    page_icon="💻",
+    layout="centered"
+)
 
-# Dataset
-df = pd.read_csv("laptops.csv")
+st.title("💻 Laptop Price Predictor")
+st.write("Enter the laptop specifications to estimate its price.")
 
-st.set_page_config(page_title="Laptop Price Prediction")
+# ------------------ Load Files ------------------
+dataset = pd.read_csv("laptops.csv")
 
-st.title("💻 Laptop Price Prediction")
+with open("model.pkl", "rb") as f:
+    model = pickle.load(f)
 
-# Inputs
-brand = st.selectbox("Brand", sorted(df["Brand"].unique()))
-processor = st.selectbox("Processor", sorted(df["Processor"].unique()))
-ram = st.selectbox("RAM", sorted(df["RAM"].unique()))
-storage = st.selectbox("Storage", sorted(df["Storage"].unique()))
-gpu = st.selectbox("GPU", sorted(df["GPU"].unique()))
-os = st.selectbox("Operating System", sorted(df["OS"].unique()))
+with open("scaler.pkl", "rb") as f:
+    scaler = pickle.load(f)
+
+# ------------------ Input Fields ------------------
+
+brand = st.selectbox("Brand", sorted(dataset["brand"].unique()))
+processor_brand = st.selectbox(
+    "Processor Brand",
+    sorted(dataset["processor_brand"].unique())
+)
+
+processor_tier = st.selectbox(
+    "Processor Tier",
+    sorted(dataset["processor_tier"].unique())
+)
+
+gpu_brand = st.selectbox(
+    "GPU Brand",
+    sorted(dataset["gpu_brand"].unique())
+)
+
+gpu_type = st.selectbox(
+    "GPU Type",
+    sorted(dataset["gpu_type"].unique())
+)
+
+primary_storage_type = st.selectbox(
+    "Primary Storage",
+    sorted(dataset["primary_storage_type"].unique())
+)
+
+secondary_storage_type = st.selectbox(
+    "Secondary Storage",
+    sorted(dataset["secondary_storage_type"].unique())
+)
+
+os = st.selectbox(
+    "Operating System",
+    sorted(dataset["OS"].unique())
+)
+
+num_cores = st.number_input("CPU Cores", 1, 32, 4)
+num_threads = st.number_input("CPU Threads", 1, 64, 8)
+
+ram = st.number_input("RAM (GB)", 2, 128, 8)
+
+primary_storage = st.number_input(
+    "Primary Storage Capacity (GB)",
+    64,
+    4096,
+    512
+)
+
+secondary_storage = st.number_input(
+    "Secondary Storage Capacity (GB)",
+    0,
+    4096,
+    0
+)
 
 display = st.number_input(
-    "Display Size (inches)",
-    float(df["Display Size"].min()),
-    float(df["Display Size"].max()),
-    float(df["Display Size"].mean())
+    "Display Size (inch)",
+    10.0,
+    20.0,
+    15.6
 )
 
-rating = st.number_input(
-    "Rating",
-    float(df["Rating"].min()),
-    float(df["Rating"].max()),
-    float(df["Rating"].mean())
+resolution_width = st.number_input(
+    "Resolution Width",
+    1024,
+    3840,
+    1920
 )
+
+resolution_height = st.number_input(
+    "Resolution Height",
+    768,
+    2160,
+    1080
+)
+
+touch = st.selectbox(
+    "Touch Screen",
+    [0, 1]
+)
+
+rating = st.slider(
+    "Rating",
+    0.0,
+    5.0,
+    4.0,
+    0.1
+)
+
+warranty = st.number_input(
+    "Warranty (Years)",
+    0,
+    5,
+    1
+)
+
+# ------------------ Prediction ------------------
 
 if st.button("Predict Price"):
 
     input_df = pd.DataFrame({
-        "Brand":[brand],
-        "Processor":[processor],
-        "RAM":[ram],
-        "Storage":[storage],
-        "GPU":[gpu],
+        "brand":[brand],
+        "Rating":[rating],
+        "processor_brand":[processor_brand],
+        "processor_tier":[processor_tier],
+        "num_cores":[num_cores],
+        "num_threads":[num_threads],
+        "ram_memory":[ram],
+        "primary_storage_type":[primary_storage_type],
+        "primary_storage_capacity":[primary_storage],
+        "secondary_storage_type":[secondary_storage_type],
+        "secondary_storage_capacity":[secondary_storage],
+        "gpu_brand":[gpu_brand],
+        "gpu_type":[gpu_type],
+        "is_touch_screen":[touch],
+        "display_size":[display],
+        "resolution_width":[resolution_width],
+        "resolution_height":[resolution_height],
         "OS":[os],
-        "Display Size":[display],
-        "Rating":[rating]
+        "year_of_warranty":[warranty]
     })
 
-    # Encode categorical columns
-    cat_cols = input_df.select_dtypes(include="object").columns
-    encoded = encoder.transform(input_df[cat_cols])
+    input_df = pd.get_dummies(input_df)
 
-    encoded_df = pd.DataFrame(
-        encoded,
-        columns=encoder.get_feature_names_out(cat_cols)
-    )
+    train_cols = pd.get_dummies(
+        dataset.drop(["Price","Model","index"], axis=1)
+    ).columns
 
-    input_df = input_df.drop(columns=cat_cols)
+    input_df = input_df.reindex(columns=train_cols, fill_value=0)
 
-    final_df = pd.concat(
-        [input_df.reset_index(drop=True), encoded_df],
-        axis=1
-    )
+    scaled = scaler.transform(input_df)
 
-    # Scale
-    final_df = scaler.transform(final_df)
+    prediction = model.predict(scaled)[0]
 
-    # Prediction
-    price = model.predict(final_df)
-
-    st.success(f"💰 Estimated Laptop Price: ₹{price[0]:,.2f}")
+    st.success(f"Estimated Laptop Price : ₹ {prediction:,.0f}")
